@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Туул голын аврал</title>
+<style>
+:root{--bg:#EAF3F7;--ink:#0B2A3C;--card:#fff;--acc:#1C9FD6;--acc2:#F2A33A;--bad:#C4472A;--good:#1E8E5A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#071A26;--ink:#EAF3F7;--card:#0F3347;--acc:#6FD0F5;--acc2:#F5B85C;--bad:#F0906F;--good:#6FD6A0}}
+:root[data-theme="dark"]{--bg:#071A26;--ink:#EAF3F7;--card:#0F3347;--acc:#6FD0F5;--acc2:#F5B85C;--bad:#F0906F;--good:#6FD6A0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-user-select:none;user-select:none}
+.app{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px;min-height:100%}
+.hud{width:min(100%,480px);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-weight:700}
+.chip{background:var(--card);border-radius:999px;padding:5px 12px;font-size:.9rem;white-space:nowrap}
+.hp{height:14px;background:var(--card);border-radius:99px;overflow:hidden;border:2px solid var(--acc)}
+.hp i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--bad),var(--acc2),var(--good));transition:width .25s}
+.stage{position:relative;width:min(100%,480px,calc((100vh - 120px)*.6667));aspect-ratio:2/3;border-radius:20px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.3);touch-action:none}
+canvas{width:100%;height:100%;display:block}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:22px;background:rgba(7,26,38,.88);color:#EAF3F7;overflow:auto}
+.ov h1{margin:0;font-size:1.9rem;line-height:1.1}
+.ov h2{margin:0;font-size:1.4rem}
+.ov p,.ov li{margin:0;line-height:1.45;font-size:.98rem}
+.ov ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.tag{color:#6FD0F5;font-weight:800;font-size:.8rem;letter-spacing:.08em}
+.btn{background:#1C9FD6;color:#04222F;border:0;border-radius:12px;padding:13px 20px;font-size:1.05rem;font-weight:800;cursor:pointer;margin-top:4px}
+.opt{display:block;width:100%;text-align:left;background:transparent;color:inherit;border:2px solid #6FD0F5;border-radius:10px;padding:10px 12px;font-size:.98rem;cursor:pointer;margin-top:4px}
+.hide{display:none}
+.hint{font-size:.8rem;opacity:.7;margin:0;text-align:center}
+.mute{background:none;border:0;font-size:1.2rem;cursor:pointer;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="hud"><span class="chip" id="lv">Түвшин 1</span><div class="hp"><i id="hp"></i></div><span class="chip">⭐ <span id="sc">0</span> <span id="cb"></span> <button class="mute" id="mu" aria-label="Дуу">🔊</button></span></div>
+ <div class="stage" id="stage"><canvas id="c"></canvas><div class="ov" id="ov"></div></div>
+ <p class="hint">Хулгана / хуруугаа чирэх, эсвэл ← → товчоор завиа удирд</p>
+</div>
+<script>
+const W=480,H=720,$=id=>document.getElementById(id),c=$('c'),ctx=c.getContext('2d'),stage=$('stage');
+const dpr=Math.min(devicePixelRatio||1,2);c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+const LV=[
+ {n:'Дэлхийн далай',tag:'ТҮВШИН 1 · ДЭЛХИЙ',target:14,sky:['#0E5D8A','#1C9FD6'],pool:['🛍','🏭','🧴','🛢'],
+  info:['Дэлхийд ойролцоогоор 2.2 тэрбум хүн аюулгүй ундны усгүй байна.','Ойролцоогоор 3.5 тэрбум хүн аюулгүй ариун цэврийн нөхцөлгүй.','Бохир усыг цэвэрлэхгүй голд хаявал халдварт өвчний аюул нэмэгдэнэ. Жилд 1 сая гаруй хүн ийм шалтгаанаар нас бардаг.'],
+  q:{q:'Дэлхийн усны бохирдлын гол эх үүсвэр аль вэ?',a:['Үйлдвэр, хөдөө аж ахуй, хотын бохир ус','Зөвхөн борооны ус','Салхи'],c:0}},
+ {n:'Туул гол',tag:'ТҮВШИН 2 · МОНГОЛ ОРОН',target:18,sky:['#2C6E5A','#5FB88F'],pool:['🚽','⛏','🐑','🛍','🛢'],
+  info:['Туул голын сав газарт гэр хороолол, уул уурхай, мал аж ахуй, хот суурин бүгд усны чанарт нөлөөлдөг.','Цэвэрлэх байгууламжийн хүчин чадал хүрэлцэхгүй, нүхэн жорлонгийн бохирдол усанд орох эрсдэлтэй.','Уул уурхайн олборлолт гадаргын усыг бохирдуулж, ширгээхэд нөлөөлж болно.'],
+  q:{q:'Нийслэлд 2026-2031 онд хэдэн арга хэмжээ хэрэгжүүлэхээр төлөвлөсөн бэ?',a:['12','56','200'],c:1}},
+ {n:'Шийдлийн хөтөлбөр',tag:'ТҮВШИН 3 · БУУРУУЛАХ АРГА ЗАМ',target:22,sky:['#5A3E8E','#8E6FD0'],pool:['🚽','⛏','🐑','🛍','🛢','🧴','🏭'],
+  info:['Бохир усыг цэвэрлээд гаргах, ус хэмнэх, хяналт тавих нь үндсэн шийдэл.','Иргэд хогоо голд хаяхгүй, мал усалгааны газрыг хамгаалбал голын эрэг цэвэр байна.','Төр, иргэн, бизнес хамтарвал ус цэвэр хэвээр үлдэнэ.'],
+  q:{q:'Усны бохирдлыг бууруулах хамгийн зөв сонголт аль вэ?',a:['Хогоо голд хаях','Бохир ус цэвэрлэх, ус хэмнэх, хяналт тавих','Ус хэрэглэхээ нэмэх'],c:1}}
+];
+const FACT={'🛍':'Хуванцар хог голд орж амьд организмд хор болдог.','🏭':'Үйлдвэрийн хаягдал бодис усыг химийн аргаар бохирдуулдаг.','🧴':'Химийн бодис, засварын газрын хаягдал усанд шингэдэг.','🛢':'Тос шатахуун усны гадаргуу дээр хальс үүсгэнэ.','🚽':'Цэвэрлээгүй бохир ус халдварт өвчин тараадаг.','⛏':'Уурхайн шингэн голын усны чанарыг муутгана.','🐑':'Малын хаягдал булаг, голын эрэг орчимд бохирдол үүсгэнэ.'};
+let st='menu',L=0,score=0,hp=100,combo=0,caught=0,t=0,acc=0,slow=0,shake=0,best=0,muted=false;
+let items=[],parts=[],texts=[],fact='',factT=0,boat={x:W/2,tx:W/2},keys={};
+try{best=+localStorage.getItem('trr_best')||0}catch(e){}
+let ac;function beep(f,d,tp){if(muted)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=tp||'sine';o.frequency.value=f;g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+$('mu').onclick=()=>{muted=!muted;$('mu').textContent=muted?'🔇':'🔊'};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function ov(h){const o=$('ov');o.innerHTML=h;o.classList.remove('hide')}
+function hideOv(){$('ov').classList.add('hide')}
+function menu(){st='menu';ov('<p class="tag">УСНЫ БОХИРДОЛ</p><h1>Туул голын аврал</h1><p>Цэвэрлэгээний завиар голд орж ирсэн бохирдлыг барьж ав. Цэвэр загас 🐟, дусал 💧-г барьж болохгүй!</p><ul><li>♻ бүх бохирдлыг нэг дор цэвэрлэнэ</li><li>⏳ урсгалыг удаашруулна</li><li>Дараалан барьвал комбо оноо нэмэгдэнэ</li></ul><p>Рекорд: <b>'+best+'</b></p><button class="btn" onclick="startGame()">Эхлэх</button>')}
+function startGame(){L=0;score=0;hp=100;combo=0;beep(520,.15);beginLevel()}
+function beginLevel(){caught=0;items=[];parts=[];slow=0;boat.x=boat.tx=W/2;st='play';hideOv();ui()}
+function ui(){$('lv').textContent='Түвшин '+(L+1)+'/3';$('sc').textContent=score;$('hp').style.width=hp+'%';$('cb').textContent=combo>=3?'🔥×'+(1+Math.floor(combo/5)):''}
+function spawn(){
+ const lv=LV[L],r=Math.random();let it={x0:rnd(60,W-60),y:-30,v:rnd(110,150)+L*35,a:rnd(6,26),f:rnd(1,2.5),p:rnd(0,6),rot:rnd(-.4,.4)};
+ if(r<.17){it.k='good';it.e=Math.random()<.6?'🐟':'💧'}
+ else if(r<.22){it.k='pw';it.e=Math.random()<.5?'♻':'⏳'}
+ else{it.k='bad';it.e=lv.pool[Math.floor(Math.random()*lv.pool.length)]}
+ it.x=it.x0;items.push(it)}
+function burst(x,y,col,n){for(let i=0;i<n;i++)parts.push({x,y,vx:rnd(-160,160),vy:rnd(-220,40),l:rnd(.4,.8),m:.8,col})}
+function say(x,y,s,col){texts.push({x,y,s,col,l:.8})}
+function caughtBad(it){combo++;const m=1+Math.floor(combo/5),pts=10*m;score+=pts;caught++;fact=FACT[it.e]||'';factT=3;burst(it.x,it.y,'#6FD0F5',10);say(it.x,it.y-20,'+'+pts,'#fff');beep(520+combo*18,.1,'triangle');
+ if(caught>=LV[L].target)levelDone()}
+function levelDone(){st='card';items=[];const lv=LV[L];score+=50;ui();beep(760,.25);
+ ov('<p class="tag">'+lv.tag+'</p><h2>'+lv.n+': түвшин дууслаа</h2><ul>'+lv.info.map(s=>'<li>'+s+'</li>').join('')+'</ul><button class="btn" onclick="quiz()">Шалгалт руу</button>')}
+function quiz(){const q=LV[L].q;ov('<p class="tag">ШАЛГАЛТ · +100 оноо, +20 эрүүл мэнд</p><h2>'+q.q+'</h2>'+q.a.map((a,i)=>'<button class="opt" onclick="ans('+i+',this)">'+a+'</button>').join(''))}
+function ans(i,b){const q=LV[L].q,ok=i===q.c;b.style.background=ok?'#1E8E5A':'#C4472A';if(ok){score+=100;hp=Math.min(100,hp+20);beep(880,.25)}else beep(180,.3,'sawtooth');
+ document.querySelectorAll('.opt').forEach(x=>x.disabled=true);ui();
+ setTimeout(()=>{L++;if(L>=LV.length)win();else{ov('<p class="tag">'+LV[L].tag+'</p><h2>'+LV[L].n+'</h2><p>'+(ok?'Зөв хариуллаа!':'Зөв хариулт: '+q.a[q.c]+'.')+' Бохирдол илүү хурдан урсаж байна.</p><button class="btn" onclick="beginLevel()">Үргэлжлүүлэх</button>')}},900)}
+function win(){st='end';if(score>best){best=score;try{localStorage.setItem('trr_best',best)}catch(e){}}
+ const rk=score>=900?'🏆 Туул голын баатар':score>=650?'🥈 Усны хамгаалагч':'🌱 Цэвэрлэгээний сайн дурын ажилтан';
+ ov('<p class="tag">ДҮГНЭЛТ</p><h1>'+rk+'</h1><p>Нийт оноо: <b>'+score+'</b> · Рекорд: <b>'+best+'</b></p><ul><li>Дэлхийд ус бохирдож, олон тэрбум хүн аюулгүй усгүй байна.</li><li>Монголд хот, уул уурхай, мал, цэвэрлэх байгууламжийн хомсдол голд нөлөөлдөг.</li><li>Шийдэл: цэвэрлэх, хэмнэх, хяналт, иргэдийн оролцоо.</li></ul><button class="btn" onclick="startGame()">Дахин тоглох</button>')}
+function lose(){st='end';beep(160,.5,'sawtooth');ov('<p class="tag">ГОЛ БОХИРДЛОО</p><h1>Тоглоом дууслаа</h1><p>Оноо: <b>'+score+'</b>. Бохирдол олширвол гол өөрөө цэвэршиж чаддаггүй. Дахин оролдоно уу.</p><button class="btn" onclick="startGame()">Дахин оролдох</button>')}
+function update(dt){
+ t+=dt;slow=Math.max(0,slow-dt);shake=Math.max(0,shake-dt);factT=Math.max(0,factT-dt);
+ if(keys.l)boat.tx-=460*dt;if(keys.r)boat.tx+=460*dt;boat.tx=Math.max(50,Math.min(W-50,boat.tx));boat.x+=(boat.tx-boat.x)*Math.min(1,dt*14);
+ if(st==='play'){acc+=dt;const gap=Math.max(.38,.95-L*.14);if(acc>gap){acc=0;spawn()}}
+ const sp=slow>0?.5:1;
+ for(let i=items.length-1;i>=0;i--){const it=items[i];it.y+=it.v*dt*sp;it.x=it.x0+Math.sin(t*it.f+it.p)*it.a;
+  if(st==='play'&&it.y>H-150&&it.y<H-70&&Math.abs(it.x-boat.x)<62){items.splice(i,1);
+   if(it.k==='bad')caughtBad(it);
+   else if(it.k==='good'){hp-=12;combo=0;shake=.3;say(it.x,it.y-20,'-12','#F0906F');fact='Амьд ертөнцийг бүү хөнд! Цэвэр ус, загас бол голын баялаг.';factT=3;beep(200,.25,'sawtooth')}
+   else{if(it.e==='⏳'){slow=6;say(it.x,it.y-20,'Удаан','#fff')}else{for(let j=items.length-1;j>=0;j--)if(items[j].k==='bad'){burst(items[j].x,items[j].y,'#6FD0F5',6);const b=items.splice(j,1)[0];score+=10;caught++}say(boat.x,H-170,'Цэвэрлэв!','#fff');if(caught>=LV[L].target&&st==='play')levelDone()}beep(900,.2)}
+   ui();if(hp<=0&&st==='play'){lose();return}continue}
+  if(it.y>H+30){if(it.k==='bad'&&st==='play'){hp-=8;combo=0;shake=.2;say(it.x0,H-40,'-8','#F0906F');ui();if(hp<=0){lose();return}}items.splice(i,1)}}
+ for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.l-=dt}parts=parts.filter(p=>p.l>0);
+ for(const x of texts){x.y-=40*dt;x.l-=dt}texts=texts.filter(x=>x.l>0)}
+function draw(){
+ const lv=LV[L]||LV[0];ctx.save();if(shake>0)ctx.translate(rnd(-4,4),rnd(-4,4));
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,lv.sky[0]);g.addColorStop(1,lv.sky[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=2;
+ for(let k=0;k<9;k++){ctx.beginPath();for(let x=0;x<=W;x+=12){const y=k*86+(t*(slow>0?20:40))%86+Math.sin(x*.03+t*2+k)*6;x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}
+ ctx.fillStyle='#2E5E3A';ctx.fillRect(0,0,16,H);ctx.fillRect(W-16,0,16,H);
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const it of items){ctx.save();ctx.translate(it.x,it.y);ctx.rotate(it.rot+Math.sin(t*2+it.p)*.2);
+  if(it.k!=='bad'){ctx.fillStyle=it.k==='good'?'rgba(30,142,90,.35)':'rgba(242,163,58,.45)';ctx.beginPath();ctx.arc(0,0,28,0,7);ctx.fill()}
+  ctx.font='40px serif';ctx.fillText(it.e,0,2);ctx.restore()}
+ const bx=boat.x,by=H-105;ctx.save();ctx.translate(bx,by);ctx.rotate((boat.tx-boat.x)*.002);
+ ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,32,60,9,0,0,7);ctx.fill();
+ ctx.fillStyle='#F2A33A';ctx.beginPath();ctx.moveTo(-58,-6);ctx.lineTo(58,-6);ctx.lineTo(42,30);ctx.lineTo(-42,30);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#fff';ctx.fillRect(-18,-30,36,24);ctx.fillStyle='#1C9FD6';ctx.fillRect(-12,-26,24,12);
+ ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-58,-6);ctx.quadraticCurveTo(0,-62,58,-6);ctx.stroke();
+ ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1.5;for(let k=-40;k<=40;k+=20){ctx.beginPath();ctx.moveTo(k,-10);ctx.lineTo(k*.8,-36);ctx.stroke()}ctx.restore();
+ for(const p of parts){ctx.globalAlpha=Math.max(0,p.l/p.m);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
+ ctx.font='800 24px system-ui,sans-serif';for(const x of texts){ctx.globalAlpha=Math.max(0,x.l);ctx.fillStyle=x.col;ctx.fillText(x.s,x.x,x.y)}ctx.globalAlpha=1;
+ if(st==='play'){ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(16,12,W-32,14);ctx.fillStyle='#fff';ctx.fillRect(16,12,(W-32)*caught/lv.target,14);ctx.fillStyle='#fff';ctx.font='700 14px system-ui,sans-serif';ctx.fillText(lv.n+' · '+caught+'/'+lv.target,W/2,42)}
+ if(factT>0){ctx.globalAlpha=Math.min(1,factT);ctx.fillStyle='rgba(7,26,38,.78)';ctx.fillRect(20,H-62,W-40,46);ctx.fillStyle='#fff';ctx.font='600 13px system-ui,sans-serif';wrap(fact,W/2,H-46,W-70,16);ctx.globalAlpha=1}
+ ctx.restore()}
+function wrap(s,x,y,mw,lh){const w=s.split(' ');let l='',ln=[];for(const a of w){if(ctx.measureText(l+a).width>mw&&l){ln.push(l);l=a+' '}else l+=a+' '}ln.push(l);ln.forEach((q,i)=>ctx.fillText(q.trim(),x,y+i*lh))}
+let last=0;function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;update(dt);draw();requestAnimationFrame(loop)}
+stage.addEventListener('pointermove',e=>{const r=stage.getBoundingClientRect();boat.tx=(e.clientX-r.left)/r.width*W});
+stage.addEventListener('pointerdown',e=>{const r=stage.getBoundingClientRect();boat.tx=(e.clientX-r.left)/r.width*W});
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=1;if(e.key==='ArrowRight'||e.key==='d')keys.r=1});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=0;if(e.key==='ArrowRight'||e.key==='d')keys.r=0});
+menu();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
