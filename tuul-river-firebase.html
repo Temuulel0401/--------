@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Туул голын аврал</title>
+<title>Туул голын аврал · Анги</title>
 <style>
 :root{--bg:#EAF3F7;--ink:#0B2A3C;--card:#fff;--acc:#1C9FD6;--acc2:#F2A33A;--bad:#C4472A;--good:#1E8E5A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#071A26;--ink:#EAF3F7;--card:#0F3347;--acc:#6FD0F5;--acc2:#F5B85C;--bad:#F0906F;--good:#6FD6A0}}
@@ -28,12 +28,24 @@ canvas{width:100%;height:100%;display:block}
 .hide{display:none}
 .hint{font-size:.8rem;opacity:.7;margin:0;text-align:center}
 .mute{background:none;border:0;font-size:1.2rem;cursor:pointer;color:var(--ink)}
+.board{width:min(100%,480px);background:var(--card);border-radius:16px;padding:14px;margin-top:4px}
+.board h3{margin:0 0 8px;font-size:1.05rem}
+.board table{width:100%;border-collapse:collapse;font-size:.85rem}
+.board th,.board td{text-align:left;padding:5px 4px;border-bottom:1px solid rgba(127,127,127,.25)}
+.scroll{overflow-x:auto}
+.me td{font-weight:800;color:var(--acc)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sm{background:var(--acc);color:#04222F;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+.sm.red{background:var(--bad)}
+.nm{width:100%;padding:12px;border-radius:10px;border:2px solid #6FD0F5;background:#0F3347;color:#fff;font-size:1rem}
 </style>
 </head>
 <body>
 <div class="app">
  <div class="hud"><span class="chip" id="lv">Түвшин 1</span><div class="hp"><i id="hp"></i></div><span class="chip">⭐ <span id="sc">0</span> <span id="cb"></span> <button class="mute" id="mu" aria-label="Дуу">🔊</button></span></div>
- <div class="stage" id="stage"><canvas id="c"></canvas><div class="ov" id="ov"></div></div>
+ <div class="stage" id="stage"><canvas id="c"></canvas><div class="ov" id="ov"></div><div class="ov hide" id="win" style="z-index:5;align-items:center;text-align:center"></div></div>
+ <div class="board" id="board"><h3>🏆 Тэргүүлэгчид</h3><div id="lb">Холбогдож байна...</div></div>
+ <div class="board hide" id="teacher"><h3>👩‍🏫 Багшийн хяналтын самбар</h3><p id="tinfo"></p><div class="scroll" id="tt"></div><div class="row"><button class="sm" id="csv">CSV татах</button><button class="sm" id="fin">🏁 Дуусгах: ялагчийг зарлах</button><button class="sm" id="newg">Шинэ тоглолт</button><button class="sm red" id="clr">Бүх үр дүнг арилгах</button></div></div>
  <p class="hint">Хулгана / хуруугаа чирэх, эсвэл ← → товчоор завиа удирд</p>
 </div>
 <script>
@@ -59,9 +71,9 @@ $('mu').onclick=()=>{muted=!muted;$('mu').textContent=muted?'🔇':'🔊'};
 const rnd=(a,b)=>a+Math.random()*(b-a);
 function ov(h){const o=$('ov');o.innerHTML=h;o.classList.remove('hide')}
 function hideOv(){$('ov').classList.add('hide')}
-function menu(){st='menu';ov('<p class="tag">УСНЫ БОХИРДОЛ</p><h1>Туул голын аврал</h1><p>Цэвэрлэгээний завиар голд орж ирсэн бохирдлыг барьж ав. Цэвэр загас 🐟, дусал 💧-г барьж болохгүй!</p><ul><li>♻ бүх бохирдлыг нэг дор цэвэрлэнэ</li><li>⏳ урсгалыг удаашруулна</li><li>Дараалан барьвал комбо оноо нэмэгдэнэ</li></ul><p>Рекорд: <b>'+best+'</b></p><button class="btn" onclick="startGame()">Эхлэх</button>')}
-function startGame(){L=0;score=0;hp=100;combo=0;beep(520,.15);beginLevel()}
-function beginLevel(){caught=0;items=[];parts=[];slow=0;boat.x=boat.tx=W/2;st='play';hideOv();ui()}
+function menu(){st='menu';ov('<p class="tag">УСНЫ БОХИРДОЛ</p><h1>Туул голын аврал</h1><p>Цэвэрлэгээний завиар голд орж ирсэн бохирдлыг барьж ав. Цэвэр загас 🐟, дусал 💧-г барьж болохгүй!</p><ul><li>♻ бүх бохирдлыг нэг дор цэвэрлэнэ</li><li>⏳ урсгалыг удаашруулна</li><li>Дараалан барьвал комбо оноо нэмэгдэнэ</li></ul><input class="nm" id="nm" maxlength="20" placeholder="Нэрээ энд бич" value="'+esc(myName)+'"><p>Рекорд: <b>'+best+'</b></p><button class="btn" onclick="startGame()">Эхлэх</button>')}
+function startGame(){if(finished)return;const el=$('nm');const v=((el&&el.value)||myName).trim();if(!v){menu();return}myName=v;try{localStorage.setItem('trr_name',v)}catch(e){}plays++;L=0;score=0;hp=100;combo=0;beep(520,.15);beginLevel()}
+function beginLevel(){caught=0;items=[];parts=[];slow=0;boat.x=boat.tx=W/2;st='play';hideOv();ui();report('Тоглож байна · Түвшин '+(L+1))}
 function ui(){$('lv').textContent='Түвшин '+(L+1)+'/3';$('sc').textContent=score;$('hp').style.width=hp+'%';$('cb').textContent=combo>=3?'🔥×'+(1+Math.floor(combo/5)):''}
 function spawn(){
  const lv=LV[L],r=Math.random();let it={x0:rnd(60,W-60),y:-30,v:rnd(110,150)+L*35,a:rnd(6,26),f:rnd(1,2.5),p:rnd(0,6),rot:rnd(-.4,.4)};
@@ -73,16 +85,16 @@ function burst(x,y,col,n){for(let i=0;i<n;i++)parts.push({x,y,vx:rnd(-160,160),v
 function say(x,y,s,col){texts.push({x,y,s,col,l:.8})}
 function caughtBad(it){combo++;const m=1+Math.floor(combo/5),pts=10*m;score+=pts;caught++;fact=FACT[it.e]||'';factT=3;burst(it.x,it.y,'#6FD0F5',10);say(it.x,it.y-20,'+'+pts,'#fff');beep(520+combo*18,.1,'triangle');
  if(caught>=LV[L].target)levelDone()}
-function levelDone(){st='card';items=[];const lv=LV[L];score+=50;ui();beep(760,.25);
+function levelDone(){st='card';items=[];const lv=LV[L];score+=50;ui();beep(760,.25);report('Түвшин '+(L+1)+' дууслаа');
  ov('<p class="tag">'+lv.tag+'</p><h2>'+lv.n+': түвшин дууслаа</h2><ul>'+lv.info.map(s=>'<li>'+s+'</li>').join('')+'</ul><button class="btn" onclick="quiz()">Шалгалт руу</button>')}
 function quiz(){const q=LV[L].q;ov('<p class="tag">ШАЛГАЛТ · +100 оноо, +20 эрүүл мэнд</p><h2>'+q.q+'</h2>'+q.a.map((a,i)=>'<button class="opt" onclick="ans('+i+',this)">'+a+'</button>').join(''))}
 function ans(i,b){const q=LV[L].q,ok=i===q.c;b.style.background=ok?'#1E8E5A':'#C4472A';if(ok){score+=100;hp=Math.min(100,hp+20);beep(880,.25)}else beep(180,.3,'sawtooth');
  document.querySelectorAll('.opt').forEach(x=>x.disabled=true);ui();
  setTimeout(()=>{L++;if(L>=LV.length)win();else{ov('<p class="tag">'+LV[L].tag+'</p><h2>'+LV[L].n+'</h2><p>'+(ok?'Зөв хариуллаа!':'Зөв хариулт: '+q.a[q.c]+'.')+' Бохирдол илүү хурдан урсаж байна.</p><button class="btn" onclick="beginLevel()">Үргэлжлүүлэх</button>')}},900)}
-function win(){st='end';if(score>best){best=score;try{localStorage.setItem('trr_best',best)}catch(e){}}
+function win(){st='end';report('Бүгдийг дуусгасан ✅');if(score>best){best=score;try{localStorage.setItem('trr_best',best)}catch(e){}}
  const rk=score>=900?'🏆 Туул голын баатар':score>=650?'🥈 Усны хамгаалагч':'🌱 Цэвэрлэгээний сайн дурын ажилтан';
  ov('<p class="tag">ДҮГНЭЛТ</p><h1>'+rk+'</h1><p>Нийт оноо: <b>'+score+'</b> · Рекорд: <b>'+best+'</b></p><ul><li>Дэлхийд ус бохирдож, олон тэрбум хүн аюулгүй усгүй байна.</li><li>Монголд хот, уул уурхай, мал, цэвэрлэх байгууламжийн хомсдол голд нөлөөлдөг.</li><li>Шийдэл: цэвэрлэх, хэмнэх, хяналт, иргэдийн оролцоо.</li></ul><button class="btn" onclick="startGame()">Дахин тоглох</button>')}
-function lose(){st='end';beep(160,.5,'sawtooth');ov('<p class="tag">ГОЛ БОХИРДЛОО</p><h1>Тоглоом дууслаа</h1><p>Оноо: <b>'+score+'</b>. Бохирдол олширвол гол өөрөө цэвэршиж чаддаггүй. Дахин оролдоно уу.</p><button class="btn" onclick="startGame()">Дахин оролдох</button>')}
+function lose(){st='end';report('Гол бохирдлоо ❌');beep(160,.5,'sawtooth');ov('<p class="tag">ГОЛ БОХИРДЛОО</p><h1>Тоглоом дууслаа</h1><p>Оноо: <b>'+score+'</b>. Бохирдол олширвол гол өөрөө цэвэршиж чаддаггүй. Дахин оролдоно уу.</p><button class="btn" onclick="startGame()">Дахин оролдох</button>')}
 function update(dt){
  t+=dt;slow=Math.max(0,slow-dt);shake=Math.max(0,shake-dt);factT=Math.max(0,factT-dt);
  if(keys.l)boat.tx-=460*dt;if(keys.r)boat.tx+=460*dt;boat.tx=Math.max(50,Math.min(W-50,boat.tx));boat.x+=(boat.tx-boat.x)*Math.min(1,dt*14);
@@ -124,6 +136,56 @@ stage.addEventListener('pointermove',e=>{const r=stage.getBoundingClientRect();b
 stage.addEventListener('pointerdown',e=>{const r=stage.getBoundingClientRect();boat.tx=(e.clientX-r.left)/r.width*W});
 addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=1;if(e.key==='ArrowRight'||e.key==='d')keys.r=1});
 addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=0;if(e.key==='ArrowRight'||e.key==='d')keys.r=0});
+
+/* ====== ТОХИРГОО: эдгээр 2 мөрийг өөрчил ====== */
+const FB='https://water-dfcfe-default-rtdb.firebaseio.com/';   // жишээ: https://mytuul-default-rtdb.firebaseio.com
+const TEACHER_PIN='1234';                 // багшийн нууц код (холбоосын төгсгөлд #teacher нэмж нээнэ)
+/* ============================================== */
+let finished=false,myName='',plays=0,lastRep=-1,isOwner=false,rows=[],uid='';
+try{myName=localStorage.getItem('trr_name')||'';uid=localStorage.getItem('trr_uid')||''}catch(e){}
+if(!uid){uid='p'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);try{localStorage.setItem('trr_uid',uid)}catch(e){}}
+const cfgOK=/^https:\/\//.test(FB);
+function esc(x){return String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+async function api(path,method,body){const r=await fetch(FB.replace(/\/$/,'')+'/'+path+'.json',{method:method||'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});if(!r.ok)throw new Error(r.status);return r.json()}
+function report(status){if(finished||!cfgOK||!myName)return;lastRep=score;
+ api('scores/'+uid,'PUT',{name:myName,best:Math.max(best,score),last:score,plays,status,level:L+1,t:Date.now()}).catch(()=>{})}
+setInterval(()=>{if(st==='play'&&score!==lastRep)report('Тоглож байна · Түвшин '+(L+1))},10000);
+function ago(t){const m=Math.round((Date.now()-t)/60000);return m<1?'дөнгөж сая':m+' мин өмнө'}
+function cell(tr,v,tag){const d=document.createElement(tag||'td');d.textContent=v;tr.appendChild(d)}
+function render(){
+ const lb=$('lb');lb.innerHTML='';
+ if(!rows.length){lb.textContent='Одоогоор тоглогч алга. Эхний нь болоорой!'}
+ else{const tb=document.createElement('table'),h=document.createElement('tr');['#','Нэр','Рекорд'].forEach(x=>cell(h,x,'th'));tb.appendChild(h);
+  rows.slice(0,10).forEach((r,i)=>{const tr=document.createElement('tr');if(r.id===uid)tr.className='me';cell(tr,i+1);cell(tr,r.name);cell(tr,r.best||0);tb.appendChild(tr)});lb.appendChild(tb)}
+ if(isOwner){const now=Date.now(),act=rows.filter(r=>now-r.t<120000).length;$('tinfo').textContent='Нийт '+rows.length+' тоглогч · сүүлийн 2 минутад идэвхтэй: '+act;
+  const tt=$('tt');tt.innerHTML='';const tb=document.createElement('table'),h=document.createElement('tr');['Нэр','Рекорд','Сүүлийн','Тоглосон','Төлөв','Сүүлд'].forEach(x=>cell(h,x,'th'));tb.appendChild(h);
+  rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.best||0);cell(tr,r.last||0);cell(tr,r.plays||0);cell(tr,r.status||'');cell(tr,ago(r.t));tb.appendChild(tr)});tt.appendChild(tb)}}
+function showWin(d){finished=!!(d&&d.finished);const w=$('win');
+ if(!finished){w.classList.add('hide');return}
+ if(st==='play'){st='end';items=[]}
+ w.innerHTML='';const mk=(t,tag,c)=>{const e=document.createElement(tag);e.textContent=t;if(c)e.style.cssText=c;w.appendChild(e)};
+ mk('🏆','div','font-size:64px');mk('Тоглолт дууслаа','h2');
+ const ws=d.winners||[];
+ if(!ws.length)mk('Тоглогч оролцсонгүй.','p');
+ else{mk(ws.length>1?'Ялагчид:':'Ялагч:','p','opacity:.8');mk(ws.join(', '),'h1','color:#F5B85C');mk('Хамгийн өндөр оноо: '+(d.best||0),'p')}
+ const mine=rows.find(r=>r.id===uid);if(mine)mk('Таны оноо: '+(mine.best||0),'p','opacity:.8');
+ w.classList.remove('hide')}
+async function poll(){
+ try{const [sc,gm]=await Promise.all([api('scores'),api('game')]);
+  rows=Object.entries(sc||{}).map(([id,v])=>({id,...v})).filter(r=>r&&r.name).sort((a,b)=>(b.best||0)-(a.best||0));
+  render();showWin(gm)}catch(e){$('lb').textContent='Самбартай холбогдож чадсангүй. Интернэтээ шалгана уу.'}}
+function initCloud(){
+ if(!cfgOK){$('lb').textContent='Самбар тохируулаагүй байна (файлын эхэнд FB хаягийг оруулна). Тоглоом хэвийн ажиллана.';return}
+ if(location.hash==='#teacher'&&prompt('Багшийн нууц код:')===TEACHER_PIN){isOwner=true;$('teacher').classList.remove('hide')}
+ api('scores/'+uid).then(d=>{if(d){best=Math.max(best,d.best||0);plays=d.plays||0;if(!myName&&d.name){myName=d.name;if($('nm'))$('nm').value=myName}}}).catch(()=>{});
+ poll();setInterval(poll,3000);
+ $('fin').onclick=async()=>{const mx=rows.length?(rows[0].best||0):0;const ws=mx>0?rows.filter(r=>(r.best||0)===mx).map(r=>r.name):[];
+  try{await api('game','PUT',{finished:true,winners:ws,best:mx,t:Date.now()});poll()}catch(e){alert('Алдаа гарлаа')}};
+ $('newg').onclick=async()=>{if(!confirm('Шинэ тоглолт эхлүүлж, өмнөх үр дүнг арилгах уу?'))return;try{await api('scores','DELETE');await api('game','PUT',{finished:false});poll()}catch(e){}};
+ $('clr').onclick=async()=>{if(!confirm('Бүх үр дүнг арилгах уу?'))return;try{await api('scores','DELETE');poll()}catch(e){}};
+ $('csv').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"';const txt='\ufeffНэр,Рекорд,Сүүлийн оноо,Тоглосон,Төлөв\n'+rows.map(r=>[r.name,r.best,r.last,r.plays,r.status].map(q).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv'}));a.download='results.csv';a.click()}}
+initCloud();
 menu();requestAnimationFrame(loop);
 </script>
 </body>
